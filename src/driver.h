@@ -202,7 +202,7 @@ int8_t *launch_driver_8(int8_t header, int16_t packet_type)
                                         //     (uint16_t) concat_16(
                                         //         buffer[buffer[2] + 4],
                                         //         buffer[buffer[2] + 3]))
-                                            return &buffer[3];
+                                            return buffer;
                                     }
                                 }
                             }

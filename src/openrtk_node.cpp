@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     while(ros::ok()) {
         int8_t *data = launch_driver_8(HEADER, PACKET_TYPE_RTK);
         if (data) {
-            parse_data_rtk(&(*data), &(*result));
+            parse_data_rtk(&(data[3]), &(*result));
             sensor_msgs::Imu imu;
             float t = result->GPS_TimeOfWeek + (float)result->GPS_Week*604800;
             uint32_t sec = (uint32_t)t;
@@ -34,6 +34,7 @@ int main(int argc, char **argv)
 
             imu_pub.publish(imu);
             memset(result, 0, sizeof(result));
+            free(data);
         }
 
         ros::spinOnce();
