@@ -8,22 +8,19 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "openrtk_node");
     ros::NodeHandle handler;
     ros::Publisher imu_pub = handler.advertise<sensor_msgs::Imu>("imu", 1000);
-    ros::Rate loop_rate(100);
+    ros::Rate loop_rate(1000);
     serial_port_bringup(1);
-    rtkDataPointer result;
+    rtkDataPointer result= (rtkDataPointer) malloc(sizeof(rtkDataPointer *));;
     uint8_t *data;
     while(ros::ok()) {
         data = launch_driver_8(HEADER, PACKET_TYPE_RTK);
         if (data) {
-            result = (rtkDataPointer) malloc(sizeof(rtkDataPointer *));
             parse_data_rtk(&(data[3]), &(*result));
             sensor_msgs::Imu imu;
-            float t = result->GPS_TimeOfWeek + (float)result->GPS_Week*604800;
-            uint32_t sec = (uint32_t)t;
-            uint32_t nsec = (t - (float)sec) * 1000000000;
-            imu.header.stamp = ros::Time::now();
-            // printf("%f\n", t);
-            // imu.header.stamp = ros::Time(t);
+            float t = static_cast<float>(result->GPS_TimeOfWeek);
+            uint32_t sec = result->GPS_Week*604800 + result->GPS_TimeOfWeek/1000;
+            uint32_t nsec = result->GPS_TimeOfWeek - result->GPS_TimeOfWeek/1000 *1000;
+            imu.header.stamp = ros::Time(sec ,nsec);
             imu.header.frame_id = "base_link";
             imu.linear_acceleration.x = result->accx;
             imu.linear_acceleration.y = result->accy;
@@ -33,10 +30,10 @@ int main(int argc, char **argv)
             imu.angular_velocity.z = result->gyroz;
 
             imu_pub.publish(imu);
-            // memset(result, 0, sizeof(result));
+            memset(result, 0, sizeof(result));
             // free(result);
             free(data);
-            free(result);
+            // free(result);
         }
         
         
@@ -46,6 +43,6 @@ int main(int argc, char **argv)
     }
     puts("free");
     // free(data);
-    // free(result);
+    free(result);
     return 0;
 }
