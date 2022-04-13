@@ -11,11 +11,11 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(100);
     serial_port_bringup(1);
     rtkDataPointer result;
-    result = (rtkDataPointer) malloc(sizeof(rtkDataPointer *));
-
+    uint8_t *data;
     while(ros::ok()) {
-        int8_t *data = launch_driver_8(HEADER, PACKET_TYPE_RTK);
+        data = launch_driver_8(HEADER, PACKET_TYPE_RTK);
         if (data) {
+            result = (rtkDataPointer) malloc(sizeof(rtkDataPointer *));
             parse_data_rtk(&(data[3]), &(*result));
             sensor_msgs::Imu imu;
             float t = result->GPS_TimeOfWeek + (float)result->GPS_Week*604800;
@@ -33,14 +33,19 @@ int main(int argc, char **argv)
             imu.angular_velocity.z = result->gyroz;
 
             imu_pub.publish(imu);
-            memset(result, 0, sizeof(result));
+            // memset(result, 0, sizeof(result));
+            // free(result);
             free(data);
+            free(result);
         }
-
+        
+        
         ros::spinOnce();
         loop_rate.sleep();
-        // free(data);
+        
     }
-    free(result);
+    puts("free");
+    // free(data);
+    // free(result);
     return 0;
 }

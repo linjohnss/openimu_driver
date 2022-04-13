@@ -16,9 +16,9 @@
 
 static uint64_t time_count = 0;
 static int serial_port;
-static int8_t head;
+static uint8_t head;
 static int16_t p_type;
-static int8_t length = 0;
+static uint8_t length = 0;
 
 typedef struct imuData *imuDataPointer;
 struct imuData {
@@ -47,18 +47,18 @@ struct rtkData {
     float gyroz;
 };
 
-int16_t reverse(int16_t x)
+uint16_t reverse(uint16_t x)
 {
     x = (((x & 0xff00) >> 8) | ((x & 0x00ff) << 8));
     return x;
 }
 
-int16_t concat_16(int8_t a, int8_t b)
+uint16_t concat_16(uint8_t a, uint8_t b)
 {
     return a << 8 | (b & 0x00ff);
 }
 
-int32_t concat_32(int8_t a, int8_t b, int8_t c, int8_t d)
+uint32_t concat_32(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
 {
     return concat_16(a, b) << 16 | (concat_16(c, d) & 0x0000ffff);
 }
@@ -81,7 +81,7 @@ uint16_t CalculateCRC(uint8_t *buf, uint16_t length)
     return ((crc << 8) & 0xFF00) | ((crc >> 8) & 0xFF);
 }
 
-void parse_data_383(int16_t *data, imuDataPointer result)
+void parse_data_383(uint16_t *data, imuDataPointer result)
 {
     result->time.t_383 =
         (float) (uint16_t) reverse(concat_16(data[20], data[21])) * 15.259022;
@@ -112,9 +112,9 @@ void parse_data_383(int16_t *data, imuDataPointer result)
     return;
 }
 
-void parse_data_330(int8_t *data, imuDataPointer result)
+void parse_data_330(uint8_t *data, imuDataPointer result)
 {
-    int32_t temp;
+    uint32_t temp;
     temp = concat_32(data[3], data[2], data[1], data[0]);
     result->time.t_330 = temp;
     temp = concat_32(data[7], data[6], data[5], data[4]);
@@ -142,10 +142,10 @@ void parse_data_330(int8_t *data, imuDataPointer result)
     return;
 }
 
-void parse_data_rtk(int8_t *data, rtkDataPointer result)
+void parse_data_rtk(uint8_t *data, rtkDataPointer result)
 {
-    int16_t temp1;
-    int32_t temp2;
+    uint16_t temp1;
+    uint32_t temp2;
     temp1 = concat_16(data[1], data[0]);
     result->GPS_Week = temp1;
     temp2 = concat_32(data[5], data[4], data[3], data[2]);
@@ -175,33 +175,33 @@ void parse_data_rtk(int8_t *data, rtkDataPointer result)
     return;
 }
 
-int8_t *launch_driver_8(int8_t header, int16_t packet_type)
+uint8_t *launch_driver_8(uint8_t header, uint16_t packet_type)
 {
-    int8_t *buffer = (int8_t *) malloc((50) * sizeof(int8_t));
-    if ((read(serial_port, &buffer[0], sizeof(int8_t))) > 0) {
+    uint8_t *buffer = (uint8_t *) malloc((50) * sizeof(uint8_t));
+    if ((read(serial_port, &buffer[0], sizeof(uint8_t))) > 0) {
         if (buffer[0] == header) {
-            if (read(serial_port, &buffer[0], sizeof(int8_t)) > 0) {
+            if (read(serial_port, &buffer[0], sizeof(uint8_t)) > 0) {
                 if (buffer[0] == header) {
-                    if (read(serial_port, &buffer[0], sizeof(int8_t)) > 0) {
+                    if (read(serial_port, &buffer[0], sizeof(uint8_t)) > 0) {
                         if (buffer[0] == 0x73) {
-                            if (read(serial_port, &buffer[1], sizeof(int8_t)) >
+                            if (read(serial_port, &buffer[1], sizeof(uint8_t)) >
                                 0) {
                                 if (buffer[1] == 0x31) {
                                     if (read(serial_port, &buffer[2],
-                                             sizeof(int8_t)) > 0) {
+                                             sizeof(uint8_t)) > 0) {
                                         int32_t count = 0;
                                         while (count < buffer[2] + 2) {
                                             if (read(serial_port,
                                                      &buffer[count + 3],
-                                                     sizeof(int8_t)) > 0) {
+                                                     sizeof(uint8_t)) > 0) {
                                                 count++;
                                             }
                                         }
-                                        // if (CalculateCRC(buffer,
-                                        //                  buffer[2] + 3) ==
-                                        //     (uint16_t) concat_16(
-                                        //         buffer[buffer[2] + 4],
-                                        //         buffer[buffer[2] + 3]))
+                                        if (CalculateCRC(buffer,
+                                                         buffer[2] + 3) ==
+                                            (uint16_t) concat_16(
+                                                buffer[buffer[2] + 4],
+                                                buffer[buffer[2] + 3]))
                                             return buffer;
                                     }
                                 }
@@ -212,6 +212,7 @@ int8_t *launch_driver_8(int8_t header, int16_t packet_type)
             }
         }
     }
+    free(buffer);
     return NULL;
 }
 
