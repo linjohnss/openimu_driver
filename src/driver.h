@@ -232,16 +232,6 @@ void serial_port_bringup(int device_type)
     if (tcgetattr(serial_port, &tty) != 0) {
         printf("Error %i from tcgetattr: %s\n", errno, strerror(errno));
     }
-    // tty.c_cflag &= ~PARENB;
-    // tty.c_cflag &= ~CSTOPB;
-    // tty.c_cflag &= ~CSIZE;
-    // tty.c_cflag |= CS8;
-    // tty.c_cflag &= ~CRTSCTS;
-    // tty.c_lflag &= ICANON;
-    // tty.c_lflag &= ~ISIG;
-    // tty.c_oflag &= ~ONLCR;
-    // tty.c_cc[VTIME] = 0;
-    // tty.c_cc[VMIN] = 0;
 
     tty.c_cflag &= ~PARENB;  // Clear parity bit, disabling parity (most common)
     tty.c_cflag &= ~CSTOPB;  // Clear stop field, only one stop bit used in
