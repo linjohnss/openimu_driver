@@ -10,12 +10,13 @@
 #include <unistd.h>
 
 #define HEADER 0x55
-#define PACKET_TYPE_383 0x3153
-#define PACKET_TYPE_330 0x317A
-#define PACKET_TYPE_RTK 0x3173
+#define PACKET_TYPE_383 0x53
+#define PACKET_TYPE_330 0x7A
+#define PACKET_TYPE_RTK 0x73
+#define PI 3.1415926
 
 static uint64_t time_count = 0;
-static int serial_port;
+// static int serial_port;
 static uint8_t head;
 static int16_t p_type;
 static uint8_t length = 0;
@@ -81,40 +82,40 @@ uint16_t CalculateCRC(uint8_t *buf, uint16_t length)
     return ((crc << 8) & 0xFF00) | ((crc >> 8) & 0xFF);
 }
 
-void parse_data_383(uint16_t *data, imuDataPointer result)
+void parse_data_383(int8_t *data, imuDataPointer result)
 {
     result->time.t_383 =
-        (float) (uint16_t) reverse(concat_16(data[20], data[21])) * 15.259022;
+        (float) (uint16_t) (concat_16(data[20], data[21])) * 15.259022;
     if (result->time.t_383 == 0 || result->time.t_383 == 1000000)
         time_count++;
     result->count = time_count;
     result->accx =
-        (float) reverse(concat_16(data[1], data[0])) * 20 / (1 << 16);
+        (float) (concat_16(data[0], data[1])) * 20 / (1 << 16);
     result->accy =
-        (float) reverse(concat_16(data[3], data[2])) * 20 / (1 << 16);
+        (float) (concat_16(data[2], data[3])) * 20 / (1 << 16);
     result->accz =
-        (float) reverse(concat_16(data[5], data[4])) * 20 / (1 << 16);
+        (float) (concat_16(data[4], data[5])) * 20 / (1 << 16);
     result->gyrox =
-        (float) reverse(concat_16(data[7], data[6])) * 1260 / (1 << 16);
+        (float) (concat_16(data[6], data[7])) * 7 * PI / (1 << 16);
     result->gyroy =
-        (float) reverse(concat_16(data[9], data[8])) * 1260 / (1 << 16);
+        (float) (concat_16(data[8], data[9])) * 7 * PI / (1 << 16);
     result->gyroz =
-        (float) reverse(concat_16(data[11], data[10])) * 1260 / (1 << 16);
-    printf("%f ", result->accx);
+        (float) (concat_16(data[10], data[11])) * 7 * PI / (1 << 16);
+    printf("%f ", result->accx);    // unit (g)
     printf("%f ", result->accy);
     printf("%f ", result->accz);
-    printf("%f ", result->gyrox);
+    printf("%f ", result->gyrox);   // unit (rad/s)
     printf("%f ", result->gyroy);
     printf("%f ", result->gyroz);
     printf("%u ", result->count);
-    printf("%f ", result->time.t_383);
+    printf("%f ", result->time.t_383);  // unit (uS)
     printf("\n");
     return;
 }
 
-void parse_data_330(uint8_t *data, imuDataPointer result)
+void parse_data_330(int8_t *data, imuDataPointer result)
 {
-    uint32_t temp;
+    int32_t temp;
     temp = concat_32(data[3], data[2], data[1], data[0]);
     result->time.t_330 = temp;
     temp = concat_32(data[7], data[6], data[5], data[4]);
@@ -175,7 +176,7 @@ void parse_data_rtk(uint8_t *data, rtkDataPointer result)
     return;
 }
 
-uint8_t *launch_driver_8(uint8_t header, uint16_t packet_type)
+uint8_t *launch_driver_8(int serial_port, uint8_t header, uint8_t packet_type)
 {
     uint8_t *buffer = (uint8_t *) malloc((50) * sizeof(uint8_t));
     if ((read(serial_port, &buffer[0], sizeof(uint8_t))) > 0) {
@@ -183,7 +184,7 @@ uint8_t *launch_driver_8(uint8_t header, uint16_t packet_type)
             if (read(serial_port, &buffer[0], sizeof(uint8_t)) > 0) {
                 if (buffer[0] == header) {
                     if (read(serial_port, &buffer[0], sizeof(uint8_t)) > 0) {
-                        if (buffer[0] == 0x73) {
+                        if (buffer[0] == packet_type) {
                             if (read(serial_port, &buffer[1], sizeof(uint8_t)) >
                                 0) {
                                 if (buffer[1] == 0x31) {
@@ -212,17 +213,16 @@ uint8_t *launch_driver_8(uint8_t header, uint16_t packet_type)
             }
         }
     }
-    free(buffer);
     return NULL;
 }
 
-void serial_port_bringup(int device_type)
+int serial_port_bringup(int device_type, char *portname)
 {
-    char *portname[4] = {"/dev/ttyUSB0", "/dev/ttyUSB1", "/dev/ttyUSB2",
-                         "/dev/ttyUSB3"};
-    for (int i = 0; (serial_port = open(portname[i], O_RDONLY)) < 0; i++)
-        ;
-
+    // char *portname[4] = {"/dev/ttyUSB0", "/dev/ttyUSB1", "/dev/ttyUSB2",
+    //                      "/dev/ttyUSB3"};
+    // for (int i = 0; (serial_port = open(portname[i], O_RDONLY)) < 0; i++)
+    //     ;
+    int serial_port = open(portname, O_RDONLY);
     if (serial_port < 0) {
         printf("Error %i from open: %s\n", errno, strerror(errno));
     }
@@ -275,6 +275,8 @@ void serial_port_bringup(int device_type)
     if (tcsetattr(serial_port, TCSANOW, &tty) != 0) {
         printf("Error %i from tcsetattr: %s\n", errno, strerror(errno));
     }
+
+    return serial_port;
 }
 
 #endif /* DRIVER_H */

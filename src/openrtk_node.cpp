@@ -9,16 +9,14 @@ int main(int argc, char **argv)
     ros::NodeHandle handler;
     ros::Publisher imu_pub = handler.advertise<sensor_msgs::Imu>("imu", 100);
     ros::Rate loop_rate(120);
-    serial_port_bringup(1);
+    int serial_port = serial_port_bringup(1, "/dev/ttyUSB0");
     rtkDataPointer result= (rtkDataPointer) malloc(sizeof(rtkDataPointer *));;
     uint8_t *data = NULL;
     while(ros::ok()) {
         do {
-
-            data = launch_driver_8(HEADER, PACKET_TYPE_RTK);
+            data = launch_driver_8(serial_port, HEADER, PACKET_TYPE_RTK);
         } while(!data);
-            
-        
+
         parse_data_rtk(&(data[3]), &(*result));
         sensor_msgs::Imu imu;
         float t = static_cast<float>(result->GPS_TimeOfWeek);
@@ -36,12 +34,7 @@ int main(int argc, char **argv)
 
         imu_pub.publish(imu);
         memset(result, 0, sizeof(result));
-        // free(result);
         free(data);
-        // free(result);
-        
-        
-        
         ros::spinOnce();
         loop_rate.sleep();
         
